@@ -189,6 +189,8 @@ pub struct Visual {
     pub(crate) no_pixel_snap: bool,
     /// `El::ride_trailing`: x holds against the parent's trailing edge while its width moves.
     pub(crate) ride_trailing: bool,
+    /// `El::mirror_in_rtl`: its icon flips left to right in a right-to-left element.
+    pub(crate) mirror_rtl: bool,
     pub(crate) cold: Cold<VisualCold>,
 }
 
@@ -231,6 +233,7 @@ impl Default for Visual {
             raise: false,
             no_pixel_snap: false,
             ride_trailing: false,
+            mirror_rtl: false,
             cold: Cold::default(),
         }
     }

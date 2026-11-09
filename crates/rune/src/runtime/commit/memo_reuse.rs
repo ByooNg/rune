@@ -10,6 +10,8 @@ pub(crate) struct InheritedFlatten {
     pub(super) parent_is_stack: bool,
     pub(super) instant_changes: bool,
     pub(super) inert: bool,
+    /// The parent lays out right to left (`El::dir`).
+    pub(super) rtl: bool,
     pub(super) trace_namespace: Option<(&'static str, &'static str)>,
     pub(super) scale_bits: u32,
     /// The window's foreground (`Cx::foreground`), which a memo's uncoloured text took.
@@ -230,7 +232,7 @@ pub(super) fn same_visual(a: &Visual, b: &Visual) -> bool {
     let Visual {
         fill, border, hover, press, radius, offset, border_width, opacity, paint_alpha, layer_opacity, blur,
         rotate, mark, hit, continuous_corners, blend, hover_group, cache, raise,
-        no_pixel_snap, ride_trailing, cold,
+        no_pixel_snap, ride_trailing, mirror_rtl, cold,
     } = b;
     a.fill == *fill && a.border == *border && a.hover == *hover && a.press == *press
         && a.radius == *radius && a.offset == *offset && a.border_width == *border_width
@@ -238,7 +240,7 @@ pub(super) fn same_visual(a: &Visual, b: &Visual) -> bool {
         && a.rotate == *rotate && a.mark == *mark && a.hit == *hit
         && a.continuous_corners == *continuous_corners && a.blend == *blend
         && a.hover_group == *hover_group && a.cache == *cache && a.raise == *raise
-        && a.no_pixel_snap == *no_pixel_snap && a.ride_trailing == *ride_trailing
+        && a.no_pixel_snap == *no_pixel_snap && a.ride_trailing == *ride_trailing && a.mirror_rtl == *mirror_rtl
         && (crate::cold::Cold::ptr_eq(&a.cold, cold) || same_visual_cold(&a.cold, cold))
 }
 
@@ -432,6 +434,8 @@ pub(super) fn same_root_el(el: &El, built: &crate::memo::Built) -> bool {
         selection_group,
         a11y,
         inert,
+        dir,
+        unmirrored,
     } = base;
 
     el.children.is_empty()
@@ -486,6 +490,8 @@ pub(super) fn same_root_el(el: &El, built: &crate::memo::Built) -> bool {
         && el.selection_group == *selection_group
         && el.a11y == *a11y
         && el.inert == *inert
+        && el.dir == *dir
+        && el.unmirrored == *unmirrored
 }
 
 pub(super) fn inherited_for(
@@ -508,6 +514,7 @@ pub(super) fn inherited_for(
             parent_is_stack,
             instant_changes,
             inert,
+            rtl: parent.is_some_and(|p| nodes[p].rtl),
             trace_namespace,
             scale_bits: scale.to_bits(),
             foreground,
