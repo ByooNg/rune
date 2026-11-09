@@ -35,6 +35,9 @@ pub struct Args {
     /// `--realtime`: hold each frame until its time comes on the wall clock, so a script's steps
     /// meet a server or a process outside on the time they name.
     pub realtime: bool,
+    /// `--trees DIR`: the layout tree as each script mark passes, at `DIR/<mark>.json`, so one run
+    /// can be checked after every step.
+    pub trees: Option<PathBuf>,
     pub window: Option<String>,
     pub list_windows: bool,
     /// Draw where macOS will put the traffic lights over headless frames, and report elements
@@ -192,6 +195,7 @@ impl Args {
                 "--list-scenes" => a.list_scenes = true,
                 "--first-pixels" => a.first_pixels = true,
                 "--realtime" => a.realtime = true,
+                "--trees" => a.trees = Some(val(&mut i).into()),
                 "--window" => a.window = Some(val(&mut i)),
                 "--list-windows" => a.list_windows = true,
                 "--chrome" => a.chrome_overlay = true,
@@ -214,6 +218,7 @@ impl Args {
         if self.snap_on_patch.is_some() { return true; }
         self.snap.is_some()
             || self.tree.is_some()
+            || self.trees.is_some()
             || self.html.is_some()
             || (!self.native
                 && (self.script.is_some() || self.trace.is_some() || self.frames.is_some() || self.duration.is_some() || self.out.is_some()))
@@ -285,6 +290,7 @@ const HELP: &str = "usage: <app> [window]
   --native             trace native submissions; --frames N stops after N frames
   --first-pixels        report when the first GPU-complete offscreen pixels are readable
   --realtime            run frames no faster than the wall clock (a script against a live server)
+  --trees DIR           write the layout tree at every script mark, as DIR/<mark>.json
   --window KEY         select a window for headless tools (run_windows, App::window)
   --list-windows       list window keys using a deterministic virtual display
   --chrome              draw where macOS puts the traffic lights; list elements overlapping them

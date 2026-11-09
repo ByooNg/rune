@@ -171,6 +171,8 @@ pub(crate) fn headless_configured<S: 'static>(mut app: crate::app::App<S>, args:
     let mut rest_ms = Vec::new();
     let mut next_ev = 0;
     let mut last_down = (0.0f32, 0.0f32);
+    let mut passed_marks: Vec<String> = Vec::new();
+    if let Some(dir) = &args.trees { std::fs::create_dir_all(dir).unwrap_or_else(|e| die(&format!("{}: {e}", dir.display()))); }
     // Events at t = 0 find keys and hit elements in a laid-out first frame, as input reaches a
     // real window only once it has drawn. That frame mounts the initial state with any queued
     // updates; frame 0 then draws the events' effects.
@@ -252,7 +254,7 @@ pub(crate) fn headless_configured<S: 'static>(mut app: crate::app::App<S>, args:
                 Pos::Rel(dx, dy) => (last_down.0 + dx, last_down.1 + dy),
             };
             match &e.kind {
-                Kind::Mark(_) => {}
+                Kind::Mark(name) => if args.trees.is_some() { passed_marks.push(name.clone()) },
                 Kind::Focus(focused) => rt.window_focus(*focused),
                 // The one window always shows here.
                 Kind::Reopen => if let Some(f) = on_reopen { rt.update(|s, tx| { f(s, true, tx); }); },
@@ -417,6 +419,13 @@ pub(crate) fn headless_configured<S: 'static>(mut app: crate::app::App<S>, args:
             && let Some(lights) = chrome.traffic_light_rects()
         {
             report_traffic_light_overlaps(&rt, &lights);
+        }
+        if let Some(dir) = &args.trees {
+            for name in passed_marks.drain(..) {
+                let p = dir.join(format!("{name}.json"));
+                let text = serde_json::to_string_pretty(&tree_json(&rt, real_t)).unwrap();
+                std::fs::write(&p, text).unwrap_or_else(|e| die(&format!("{}: {e}", p.display())));
+            }
         }
         if k == snap_frame
             && let Some(p) = &args.tree
