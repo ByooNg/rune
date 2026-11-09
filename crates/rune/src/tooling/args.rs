@@ -32,6 +32,9 @@ pub struct Args {
     pub cols: usize,
     pub list_scenes: bool,
     pub first_pixels: bool,
+    /// `--realtime`: hold each frame until its time comes on the wall clock, so a script's steps
+    /// meet a server or a process outside on the time they name.
+    pub realtime: bool,
     pub window: Option<String>,
     pub list_windows: bool,
     /// Draw where macOS will put the traffic lights over headless frames, and report elements
@@ -188,6 +191,7 @@ impl Args {
                 "--every" => a.every = (num(&val(&mut i)) as usize).max(1),
                 "--list-scenes" => a.list_scenes = true,
                 "--first-pixels" => a.first_pixels = true,
+                "--realtime" => a.realtime = true,
                 "--window" => a.window = Some(val(&mut i)),
                 "--list-windows" => a.list_windows = true,
                 "--chrome" => a.chrome_overlay = true,
@@ -280,6 +284,7 @@ const HELP: &str = "usage: <app> [window]
   --trace-all           trace unkeyed elements too, by path
   --native             trace native submissions; --frames N stops after N frames
   --first-pixels        report when the first GPU-complete offscreen pixels are readable
+  --realtime            run frames no faster than the wall clock (a script against a live server)
   --window KEY         select a window for headless tools (run_windows, App::window)
   --list-windows       list window keys using a deterministic virtual display
   --chrome              draw where macOS puts the traffic lights; list elements overlapping them

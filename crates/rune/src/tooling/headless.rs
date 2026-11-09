@@ -234,6 +234,10 @@ pub(crate) fn headless_configured<S: 'static>(mut app: crate::app::App<S>, args:
             (procwatch::alloc::thread_allocations(), rt.stats.commits, crate::frame::profile::cpu_ms())
         };
         let real_t = k as f64 * dt;
+        if args.realtime {
+            let ahead = real_t - wall.elapsed().as_secs_f64();
+            if ahead > 0.0 { std::thread::sleep(std::time::Duration::from_secs_f64(ahead)); }
+        }
         let frame_start = Instant::now();
         #[cfg(feature = "frame-profile")]
         let events0 = next_ev;

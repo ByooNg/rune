@@ -976,3 +976,10 @@ fn a_trace_says_how_far_scrolling_carries_an_element_when_that_changes() {
     assert_eq!(lines[2]["sc"], json!([[row, 0.0, 30.0]]));
     assert!(lines[3].get("sc").is_none(), "only when it changes");
 }
+
+#[test]
+fn realtime_is_off_unless_asked() {
+    use crate::tooling::args::Args;
+    assert!(!Args::parse_from(vec!["--snap".into(), "a.png".into()]).realtime, "a headless run waited on the wall clock unasked");
+    assert!(Args::parse_from(vec!["--realtime".into()]).realtime, "--realtime was ignored");
+}
