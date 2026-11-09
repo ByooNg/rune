@@ -132,6 +132,8 @@ mod links;
 pub(crate) mod selectable;
 #[path = "runtime/selection/click.rs"]
 mod input_click;
+#[path = "runtime/selection/margin_press.rs"]
+mod margin_press;
 #[path = "runtime/input/help.rs"]
 mod help;
 #[path = "runtime/input/help_look.rs"]
@@ -261,6 +263,9 @@ mod live_only_tests;
 mod live_check_tests;
 #[path = "runtime/selection/select_all.rs"]
 mod select_all;
+#[cfg(test)]
+#[path = "runtime/margin_press_tests.rs"]
+mod margin_press_tests;
 #[cfg(test)]
 #[path = "runtime/select_all_tests.rs"]
 mod select_all_tests;

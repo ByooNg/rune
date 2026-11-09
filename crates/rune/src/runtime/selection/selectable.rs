@@ -210,7 +210,7 @@ pub(super) fn range_in(ranges: &[(usize, usize, usize)], i: usize) -> Option<(us
 }
 
 /// How far `x` is outside box `r` (x0, y0, x1, y1) horizontally.
-fn dist_x(r: [f32; 4], x: f32) -> f32 { (r[0] - x).max(x - r[2]).max(0.0) }
+pub(super) fn dist_x(r: [f32; 4], x: f32) -> f32 { (r[0] - x).max(x - r[2]).max(0.0) }
 
 /// Whether `a` and `b` have the same keyed segments and the same unkeyed tail after their last
 /// key, so a keyed text keeps its selection when a sibling shifts an unkeyed ancestor's index.
@@ -539,7 +539,7 @@ impl<S: 'static> Runtime<S> {
     }
 
     /// Byte offset of node `i`'s text under window point (x, y), where it was drawn this frame.
-    fn text_index_at(&self, i: usize, x: f32, y: f32) -> Option<usize> {
+    pub(super) fn text_index_at(&self, i: usize, x: f32, y: f32) -> Option<usize> {
         let n = &self.nodes[i];
         let (spec, layout) = (n.text.as_ref()?, n.text_layout.as_ref()?);
         let s = self.env.scale;
@@ -588,7 +588,7 @@ impl<S: 'static> Runtime<S> {
     /// none does. Text clipped out of sight can lie under the words that show (a folded part
     /// above them, or the hidden lines of a long folded prompt), and a drag that reached it
     /// selected everything between it and the press.
-    fn shown_box(&self, j: usize) -> Option<[f32; 4]> {
+    pub(super) fn shown_box(&self, j: usize) -> Option<[f32; 4]> {
         let r = self.drawn_box(j);
         if self.inh_scratch.len() != self.nodes.len() || self.drawn.get(j).is_none_or(|d| d[2] <= 0.0 && d[3] <= 0.0) {
             return Some(r);
@@ -600,16 +600,27 @@ impl<S: 'static> Runtime<S> {
 
     /// A primary press on `target` (None: on nothing). On selectable text away from its links it
     /// starts a selection: one click places it, two select a word, three a paragraph, and Shift
-    /// extends the current one, into another text of its selection group too. Anywhere else it
-    /// clears the selection.
-    pub(super) fn selection_down(&mut self, target: Option<usize>, x: f32, y: f32) {
+    /// extends the current one, into another text of its selection group too. On the bare space
+    /// of a selection group (a margin, the gap between paragraphs) it starts at the group's text
+    /// nearest the press, as a web page does, and returns that text. Anywhere else it clears
+    /// the selection.
+    pub(super) fn selection_down(&mut self, target: Option<usize>, x: f32, y: f32) -> Option<usize> {
         use virtual_selection::EndRef;
-        let Some(i) = target.filter(|&i| self.is_selectable(i) && self.link_at(i, x, y).is_none()) else {
-            self.clear_text_selection();
-            self.text_sel.last = None;
-            return;
+        let (i, at) = match target.filter(|&i| self.is_selectable(i) && self.link_at(i, x, y).is_none()) {
+            Some(i) => {
+                let at = self.text_index_at(i, x, y)?;
+                (i, at)
+            }
+            None => match self.group_text_near(x, y) {
+                Some(found) => found,
+                None => {
+                    self.clear_text_selection();
+                    self.text_sel.last = None;
+                    return None;
+                }
+            },
         };
-        let Some(at) = self.text_index_at(i, x, y) else { return };
+        let picked = target.is_none_or(|t| t != i).then_some(i);
         let path = self.nodes[i].path.clone();
         let content = self.content_of(i).to_owned();
         let now = self.now_clock();
@@ -644,6 +655,7 @@ impl<S: 'static> Runtime<S> {
         }
         self.text_sel.dragging = true;
         self.seal_between();
+        picked
     }
 
     /// The held press moved: extend the selection it started to the pointer, by its unit, into

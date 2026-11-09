@@ -48,10 +48,11 @@ impl<S: 'static> Runtime<S> {
     }
 
     /// The selection side of a primary press on `target` at (x, y): it starts or clears a
-    /// selection, unless the press is on an [`El::keeps_text_selection`] element.
-    pub(in crate::runtime) fn press_selection(&mut self, target: Option<usize>, x: f32, y: f32) {
-        if target.is_some_and(|t| self.press_keeps_selection(t)) { return; }
-        self.selection_down(self.selectable_at(x, y), x, y);
+    /// selection, unless the press is on an [`El::keeps_text_selection`] element. Returns the
+    /// text a press on a selection group's bare space started in.
+    pub(in crate::runtime) fn press_selection(&mut self, target: Option<usize>, x: f32, y: f32) -> Option<usize> {
+        if target.is_some_and(|t| self.press_keeps_selection(t)) { return None; }
+        self.selection_down(self.selectable_at(x, y), x, y)
     }
 
     /// The selection's focus comes before its anchor.

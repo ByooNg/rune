@@ -194,7 +194,9 @@ impl<S: 'static> Runtime<S> {
             return;
         }
         self.playground_pointer_down(x);
-        self.press_selection(target, x, y);
+        // A press on a selection group's bare space goes on as a press on the text it starts
+        // the selection in, so the drag that follows extends it.
+        let target = self.press_selection(target, x, y).or(target);
         // Inside a draggable row, dragging drags the row; clicks still select words and lines.
         if target.is_some_and(|t| self.nodes[t].handlers.on_drag.is_some() || self.nodes[t].handlers.drag_out.is_some()) {
             self.text_sel.dragging = false;
