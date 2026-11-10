@@ -88,6 +88,7 @@ atoms! {
     NoWrap = "noWrap",
     Truncate = "truncate",
     Selectable = "selectable",
+    SelectionGroup = "selectionGroup",
     TextAlign = "textAlign",
     Count = "count",
     EstimatedRowHeight = "estimatedRowHeight",
@@ -243,6 +244,7 @@ pub(crate) struct Style {
     truncate: bool,
     wrap: bool,
     selectable: bool,
+    selection_group: bool,
     text_align: Option<Align>,
     instant_hover: bool,
     hover_group: bool,
@@ -310,6 +312,7 @@ impl Default for Style {
             truncate: false,
             wrap: false,
             selectable: false,
+            selection_group: false,
             text_align: None,
             instant_hover: false,
             hover_group: false,
@@ -461,6 +464,9 @@ impl Style {
         }
         if s.hover_group {
             e = e.hover_group();
+        }
+        if s.selection_group {
+            e = e.selection_group(true);
         }
         if let Some(c) = s.group_color {
             e = e.group_color(c);
@@ -683,6 +689,7 @@ impl Style {
             }
             Atom::Truncate => self.truncate = flag(v)?,
             Atom::Selectable => self.selectable = flag(v)?,
+            Atom::SelectionGroup => self.selection_group = flag(v)?,
             Atom::TextAlign => {
                 self.text_align = Some(match v {
                     Value::Str("start") => Align::Start,

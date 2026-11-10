@@ -1,0 +1,1 @@
+- rune-luau: a `selectionGroup` prop makes the `selectable` texts inside a container one selection, as `El::selection_group` does: a drag selects across them and Cmd+C copies them joined.
