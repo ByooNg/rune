@@ -37,6 +37,11 @@ impl<S: 'static> Runtime<S> {
             Action::PointerMove(p, _) => ("on_pointer_move", 1, Some(p)),
             _ => return None,
         };
+        Some(self.note_at(name, rank, path.map(str::to_string).as_deref()))
+    }
+
+    /// The note for `name` on the element at `path` (the window when none).
+    fn note_at(&mut self, name: &'static str, rank: u8, path: Option<&str>) -> Note {
         let at = path.and_then(|p| self.index_of(p));
         let page = at.and_then(|i| self.page_of(i)).map(|i| self.nodes[i].path.as_str());
         let modal = self.active_modal().map(|i| self.nodes[i].path.as_str());
@@ -48,7 +53,20 @@ impl<S: 'static> Runtime<S> {
         let route = names.route(page, modal);
         let note = Note { route, control, action: name, rank };
         if self.watch.interaction.breached(&note) { interaction::hurry(); }
-        Some(note)
+        note
+    }
+
+    /// A wheel delta moved viewport `id` directly, no handler between: the frame that shows it
+    /// is timed as `scroll` on that viewport, from the delta's arrival.
+    ///
+    /// Trap: timing only queued actions. A wheel scroll queues none, so the input people make
+    /// most often in a long list was never timed, and scroll lag showed nowhere.
+    pub(super) fn interaction_scrolled(&mut self, id: NodeId) {
+        if !interaction::on() { return; }
+        let Some(path) = self.node_index.get(&id).map(|&i| self.nodes[i].path.clone()) else { return };
+        let at = crate::input::time::current().unwrap_or_else(crate::time::Instant::now);
+        let pending = &mut self.watch.interaction.scrolled;
+        if pending.as_ref().is_none_or(|(_, first)| at < *first) { *pending = Some((path, at)); }
     }
 
     fn index_of(&self, path: &str) -> Option<usize> {
@@ -70,8 +88,13 @@ impl<S: 'static> Runtime<S> {
     /// A frame starts.
     pub(super) fn interaction_frame_begins(&mut self) {
         if !interaction::on() { return; }
-        let queued = !self.queue.is_empty();
+        let scrolled = self.watch.interaction.scrolled.take();
+        let queued = !self.queue.is_empty() || scrolled.is_some();
         if let Some(finished) = self.watch.interaction.frame_begins(queued) { self.interaction_finished(finished); }
+        if let Some((path, at)) = scrolled {
+            let note = self.note_at("scroll", 2, Some(&path));
+            self.watch.interaction.noted(note, Some(at), crate::time::Instant::now(), std::time::Duration::ZERO);
+        }
     }
 
     /// An action that `interaction_note` named ran its handlers from `started`.

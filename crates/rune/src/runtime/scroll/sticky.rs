@@ -447,10 +447,15 @@ impl<S: 'static> Runtime<S> {
                         self.nodes[i].target[1] - self.nodes[r].target[1],
                     ))
                 });
+            // Where the element shows now: its last drawn place, moved by any scroll since that
+            // frame. Trap: the drawn place alone. A wheel delta that landed between that frame
+            // and this commit is then undone by the hold, so each page that loads mid-swipe
+            // swallows a frame of the swipe.
+            let since = self.scrolls.get(&self.nodes[s].id).map_or(0.0, |st| st.drawn[1] - st.offset as f32);
             self.keeps.push(Keep {
                 path: self.nodes[i].path.clone(),
                 viewport: self.nodes[s].path.clone(),
-                was: self.drawn[i][1] - self.drawn[s][1],
+                was: self.drawn[i][1] - self.drawn[s][1] + since * self.drawn_scale[s],
                 virtual_row,
                 hold,
             });

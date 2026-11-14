@@ -407,13 +407,35 @@ impl<S: 'static> Runtime<S> {
             .map(|(_, n)| n.id)
     }
 
+    /// The vertical viewport a wheel delta `dy` at (x, y) moves: the innermost one under the
+    /// pointer that can move that way, else the innermost one (which then holds still).
+    ///
+    /// Trap: taking the innermost viewport whatever it holds. A short box with its own scroll
+    /// and nothing to scroll (a capped code block that fits) then takes every delta while it is
+    /// under the pointer, and the page around it stops dead mid-swipe.
+    pub(super) fn wheel_target_y(&self, x: f32, y: f32, dy: f32) -> Option<NodeId> {
+        let mut innermost = None;
+        for (i, n) in self.nodes.iter().enumerate().rev() {
+            if n.scroll.is_none() || !n.scroll_axes.y() || self.subtree_exiting(i) || !self.allowed(i) || !self.node_contains(i, x, y) { continue; }
+            innermost.get_or_insert(n.id);
+            let movable = self.scrolls.get(&n.id).is_some_and(|st| if dy > 0.0 { st.offset > 0.0 } else { st.offset < st.max });
+            if movable { return Some(n.id); }
+        }
+        innermost
+    }
+
     /// Wheel or trackpad delta in points (positive `dy` moves content down, like a browser's
-    /// negative deltaY). Applied 1:1: the platform supplies its own momentum phases.
+    /// negative deltaY), on the viewport under (x, y) that can move that way. Applied 1:1: the
+    /// platform supplies its own momentum phases.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32) {
+        if let Some(id) = self.wheel_target_y(x, y, dy) { self.wheel_on(id, dy); }
+    }
+
+    /// Moves vertical viewport `id` by wheel delta `dy`.
+    pub(super) fn wheel_on(&mut self, id: NodeId, dy: f32) {
         self.release_hover_hold();
         self.drop_scroll_holds();
         self.dismiss_help();
-        let Some(id) = self.scroll_at(x, y) else { return };
         let stick = self.node_index.get(&id).and_then(|&i| self.nodes[i].scroll).is_some_and(|s| s.stick_bottom);
         if let Some(st) = self.scrolls.get_mut(&id) {
             let before = st.offset;
@@ -425,7 +447,10 @@ impl<S: 'static> Runtime<S> {
             log_event!(self, "wheel {dy:.1}");
             let moved = st.offset != before;
             self.log_scroll_wheel(id, dy);
-            if moved { self.scroll_cancels_press(id); }
+            if moved {
+                self.scroll_cancels_press(id);
+                self.interaction_scrolled(id);
+            }
         }
     }
 

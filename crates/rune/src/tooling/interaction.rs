@@ -151,6 +151,8 @@ pub(crate) struct Tracker {
     /// The last commit's memo-reused node ranges (start, len), while a frame is timed.
     pub reused: Vec<(usize, usize)>,
     sent: (Option<Instant>, u32),
+    /// The viewport a wheel moved since the last frame began, and when its first delta came.
+    pub scrolled: Option<(String, Instant)>,
 }
 
 
