@@ -423,7 +423,9 @@ impl<S: 'static> Runtime<S> {
             st.direct = true;
             st.pinned = stick && st.offset >= st.max - 0.5;
             log_event!(self, "wheel {dy:.1}");
-            if st.offset != before { self.scroll_cancels_press(id); }
+            let moved = st.offset != before;
+            self.log_scroll_wheel(id, dy);
+            if moved { self.scroll_cancels_press(id); }
         }
     }
 
