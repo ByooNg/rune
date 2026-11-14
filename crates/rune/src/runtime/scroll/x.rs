@@ -4,10 +4,11 @@
 //!
 //! A gesture moves one axis, picked by its first delta, as AppKit's predominant-axis scrolling
 //! does: mostly horizontal goes to the innermost horizontal viewport under the pointer, else to
-//! the innermost vertical one, and a diagonal never moves both. The gesture keeps that axis
-//! wherever the pointer ends up, as AppKit latches a gesture to the view it began on: one that
-//! began outside any horizontal viewport stays vertical when the content scrolls one under the
-//! pointer. Without phases (a mouse wheel), only a pause or a delta wholly on the other axis
+//! the innermost vertical one that can move that way, and a diagonal never moves both. The
+//! gesture keeps that axis and that viewport wherever the pointer ends up, as AppKit latches a
+//! gesture to the view it began on: one that began outside any horizontal viewport stays
+//! vertical when the content scrolls one under the pointer, and one that began on a page keeps
+//! moving the page when the content scrolls a nested vertical viewport under the pointer. Without phases (a mouse wheel), only a pause or a delta wholly on the other axis
 //! ends the lock, so Shift + wheel and then the plain wheel each scroll at once.
 use super::*;
 
@@ -30,7 +31,8 @@ pub(super) struct WheelLock {
     pub(super) run_gesture: u64,
     /// Horizontal (`true`) or vertical, once the gesture's first delta picked it.
     pub(super) horizontal: Option<bool>,
-    /// The horizontal viewport the gesture began on, latched through the gesture and its momentum.
+    /// The viewport the gesture began on, on its axis, latched through the gesture and its
+    /// momentum.
     pub(super) scroller: Option<NodeId>,
     /// When the last delta came, in clock seconds (`now_clock`: the wall in a window, the
     /// virtual clock headless, so scripts lock axes deterministically).
@@ -135,7 +137,16 @@ impl<S: 'static> Runtime<S> {
                 h
             }
         };
-        if horizontal { if dx != 0.0 { self.wheel_x(x, y, dx); } } else if dy != 0.0 { self.wheel(x, y, dy); }
+        if horizontal {
+            if dx != 0.0 { self.wheel_x(x, y, dx); }
+        } else if dy != 0.0 {
+            // The gesture keeps the vertical viewport its first delta picked, wherever the
+            // content carries another one under the pointer.
+            let latched = self.wheel_lock.scroller.filter(|id| self.node_index.contains_key(id));
+            let target = latched.or_else(|| self.wheel_target_y(x, y, dy));
+            self.wheel_lock.scroller = target;
+            if let Some(id) = target { self.wheel_on(id, dy); }
+        }
     }
 
     /// The platform began a trackpad gesture (winit's `TouchPhase::Started` on a wheel event):

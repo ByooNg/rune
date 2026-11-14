@@ -149,6 +149,8 @@ mod scroll_offset;
 mod reveal;
 #[path = "runtime/scroll/anchor.rs"]
 mod scroll_anchor;
+#[path = "runtime/scroll/log.rs"]
+mod scroll_log;
 #[path = "runtime/scroll/sticky.rs"]
 mod sticky;
 #[path = "runtime/anchor.rs"]

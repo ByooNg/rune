@@ -77,7 +77,8 @@ struct App {
 }
 
 fn view(s: &App, _: &mut Cx<App>) -> El {
-    let list = (0..30).fold(col().key("list"), |c, i| c.child(el().key(format!("row-{i}")).h(4.0)));
+    let rows = (0..30).fold(col().w_full(), |c, i| c.child(el().key(format!("row-{i}")).h(4.0)));
+    let list = col().key("list").w(200.0).h(40.0).scroll(crate::ScrollSpec { stick_bottom: false }).child(rows);
     col().key("settings").w_full().h_full()
         .child(el().key("save-42").size(80.0, 30.0).on_press(|s: &mut App| {
             s.presses += 1;
@@ -168,6 +169,17 @@ fn typing_in_a_field_says_key_edit_never_the_text() {
     rt.interaction_presented(Instant::now(), None);
     let rolls = rt.interaction_tracker().rollup.take();
     assert_eq!(rolls.iter().map(|r| (&*r.control.text, r.action)).collect::<Vec<_>>(), [("settings/note", "key_edit")]);
+}
+
+#[test]
+fn a_wheel_scroll_is_timed_on_the_viewport_it_moved() {
+    let mut rt = runtime(false);
+    let (x, y) = rt.find("list").unwrap();
+    rt.wheel(x, y, -10.0);
+    rt.frame(1.0 / 60.0);
+    rt.interaction_presented(Instant::now(), None);
+    let rolls = rt.interaction_tracker().rollup.take();
+    assert_eq!(rolls.iter().map(|r| (&*r.control.text, r.action)).collect::<Vec<_>>(), [("settings/list", "scroll")]);
 }
 
 #[test]
